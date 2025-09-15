@@ -4,9 +4,10 @@ import '../models/message_model.dart';
 import '../global/auth_data.dart';
 
 class MessageService {
-  static const baseUrl = 'http://172.20.10.2:5000/api/messages'; // Your backend base URL
+  // Use localhost for Flutter Web testing, change to LAN IP if testing on another device
+  static const baseUrl = 'http://localhost:5000/api/messages';
 
-  // Helper to build headers, only add Authorization if token is non-empty
+  // Helper to build headers, optionally with auth token
   static Map<String, String> _buildHeaders(String? token) {
     final headers = {'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) {
@@ -15,7 +16,7 @@ class MessageService {
     return headers;
   }
 
-  // Fetch messages between two users, optionally by propertyId
+  // Fetch messages between two users
   static Future<List<Message>> getMessages(String user1, String user2,
       {String? propertyId, String? token}) async {
     try {
@@ -27,7 +28,11 @@ class MessageService {
 
       final authToken = token ?? AuthData.token;
 
+      print('GET request URL: $uri'); // Debug print
       final response = await http.get(uri, headers: _buildHeaders(authToken));
+
+      print('Status code: ${response.statusCode}'); // Debug print
+      print('Response body: ${response.body}'); // Debug print
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
@@ -36,6 +41,7 @@ class MessageService {
         throw Exception('Failed to load messages: ${response.body}');
       }
     } catch (e) {
+      print('Network error: $e'); // Debug print
       throw Exception('MessageService.getMessages error: $e');
     }
   }
@@ -44,11 +50,16 @@ class MessageService {
   static Future<void> sendMessage(Message message, {String? token}) async {
     final uri = Uri.parse('$baseUrl/send');
     final authToken = token ?? AuthData.token;
+
+    print('POST request URL: $uri'); // Debug
     final response = await http.post(
       uri,
       headers: _buildHeaders(authToken),
       body: jsonEncode(message.toJson()),
     );
+
+    print('Status code: ${response.statusCode}');
+    print('Response body: ${response.body}');
 
     if (response.statusCode != 201) {
       throw Exception('Failed to send message: ${response.body}');
@@ -60,6 +71,7 @@ class MessageService {
       {String? propertyId, String? token}) async {
     final uri = Uri.parse('$baseUrl/read');
     final authToken = token ?? AuthData.token;
+
     final response = await http.post(
       uri,
       headers: _buildHeaders(authToken),
@@ -70,40 +82,40 @@ class MessageService {
       }),
     );
 
+    print('Mark read response: ${response.statusCode}, body: ${response.body}');
+
     if (response.statusCode != 200) {
       throw Exception('Failed to mark messages as read: ${response.body}');
     }
   }
 
-  // Fetch all messages for a given userId (required)
- static Future<List<Message>> getAllMessages({String? userId, String? token}) async {
-  final id = userId ??
-      (AuthData.role == 'landlord' ? AuthData.landlordId : AuthData.buyerPhone);
+  // Fetch all messages for a given userId
+  static Future<List<Message>> getAllMessages({String? userId, String? token}) async {
+    final id = userId ??
+        (AuthData.role == 'landlord' ? AuthData.landlordId : AuthData.buyerPhone);
 
-  if (id.isEmpty) {
-    throw Exception('Missing user ID');
+    if (id.isEmpty) {
+      throw Exception('Missing user ID');
+    }
+
+    final uri = Uri.parse('$baseUrl/all').replace(queryParameters: {
+      'userId': id,
+    });
+
+    final authToken = token ?? AuthData.token;
+
+    print('GET all messages URL: $uri'); // Debug
+
+    final response = await http.get(uri, headers: _buildHeaders(authToken));
+
+    print('Status code: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((json) => Message.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load messages: ${response.body}');
+    }
   }
-
-  final uri = Uri.parse('$baseUrl/all').replace(queryParameters: {
-    'userId': id,
-  });
-
-  final authToken = token ?? AuthData.token;
-
-  final response = await http.get(
-    uri,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $authToken',
-    },
-  );
-
-  if (response.statusCode == 200) {
-    final List data = jsonDecode(response.body);
-    return data.map((json) => Message.fromJson(json)).toList();
-  } else {
-    throw Exception('Failed to load messages: ${response.body}');
-  }
-}
-
 }

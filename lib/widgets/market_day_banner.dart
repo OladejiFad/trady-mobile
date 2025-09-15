@@ -1,88 +1,65 @@
 import 'package:flutter/material.dart';
 import '../services/market_service.dart';
 
-class MarketDayBanner extends StatefulWidget {
+class MarketDayBanner extends StatelessWidget {
   final String role; // 'buyer' or 'seller'
   final Color? color; // optional override color
 
   const MarketDayBanner({required this.role, this.color, Key? key}) : super(key: key);
 
   @override
-  _MarketDayBannerState createState() => _MarketDayBannerState();
-}
-
-class _MarketDayBannerState extends State<MarketDayBanner> {
-  bool? _isActive;
-  bool _loading = true;
-  DateTime? _now;
-  DateTime? _openTime;
-  DateTime? _closeTime;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchStatus();
-  }
-
-  Future<void> _fetchStatus() async {
-    try {
-      final result = await MarketService.fetchMarketDayInfo(widget.role);
-      setState(() {
-        _isActive = result['active'];
-        _now = DateTime.parse(result['now']);
-        _openTime = DateTime.parse(result['openTime']);
-        _closeTime = DateTime.parse(result['closeTime']);
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _isActive = false;
-        _loading = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const SizedBox(
-        height: 40,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: MarketService.fetchMarketDayInfo(role),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 40,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
 
-    final today = _now!;
-    final open = _openTime!;
-    final close = _closeTime!;
-    final nowIsSunday = today.weekday == DateTime.sunday;
+        // Error or null data
+        if (snapshot.hasError || snapshot.data == null) {
+          return _buildBanner(
+            '⚠️ Market status unavailable',
+            Colors.grey,
+          );
+        }
 
-    if (_isActive == true) {
-      return _buildBanner(
-        '🎉 Market Day is ACTIVE now! Special sections are open!',
-        widget.color ?? Colors.orangeAccent,
-      );
-    }
+        final data = snapshot.data!;
+        final isActive = data['active'] as bool? ?? false;
 
-    if (nowIsSunday && today.isBefore(open)) {
-      String timeText = widget.role == 'buyer' ? '3:00 PM' : '1:00 PM';
-      return _buildBanner(
-        '⏳ Market Day starts today at $timeText!',
-        widget.color ?? Colors.deepOrange.shade100,
-      );
-    }
+        // Safely parse dates
+        final now = DateTime.tryParse(data['now']?.toString() ?? '') ?? DateTime.now();
+        final openTime = DateTime.tryParse(data['openTime']?.toString() ?? '') ?? now;
+        final closeTime = DateTime.tryParse(data['closeTime']?.toString() ?? '') ?? now;
 
-    // Always show banner even on non-Sunday
-    return _buildBanner(
-      '🗓️ Market Day opens Sunday at ${_formatTime(open)}!',
-      widget.color ?? Colors.grey.shade300,
+        final nowIsSunday = now.weekday == DateTime.sunday;
+
+        if (isActive) {
+          return _buildBanner(
+            '🎉 Market Day is ACTIVE now! Special sections are open!',
+            color ?? Colors.green,
+          );
+        }
+
+        if (nowIsSunday && now.isBefore(openTime)) {
+          String timeText = role == 'buyer' ? '3:00 PM' : '1:00 PM';
+          return _buildBanner(
+            '⏳ Market Day starts today at $timeText!',
+            color ?? Colors.deepOrange.shade300,
+          );
+        }
+
+        // Default banner
+        return _buildBanner(
+          '🗓️ Market Day opens Sunday at ${_formatTime(openTime)}!',
+          color ?? Colors.grey.shade400,
+        );
+      },
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : dt.hour;
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    final minutes = dt.minute.toString().padLeft(2, '0');
-    return '$hour:$minutes $ampm';
   }
 
   Widget _buildBanner(String message, Color backgroundColor) {
@@ -92,9 +69,19 @@ class _MarketDayBannerState extends State<MarketDayBanner> {
       padding: const EdgeInsets.all(12),
       child: Text(
         message,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
         textAlign: TextAlign.center,
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final minutes = dt.minute.toString().padLeft(2, '0');
+    return '$hour:$minutes $ampm';
   }
 }

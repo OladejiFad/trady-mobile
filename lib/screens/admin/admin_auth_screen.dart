@@ -25,50 +25,64 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
   String? errorMessage;
 
   /// Handles form submission for login or registration
-  void handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+ void handleSubmit() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    final username = usernameController.text.trim();
-    final phone = phoneController.text.trim();
-    final password = passwordController.text;
+  final username = usernameController.text.trim();
+  final phone = phoneController.text.trim();
+  final password = passwordController.text.trim(); // trim password too
 
-    setState(() => errorMessage = null);
+  setState(() => errorMessage = null);
 
-    if (isLogin) {
-      final admin = await AdminService.loginAdmin(username, password);
-      if (admin == null) {
-        setState(() => errorMessage = 'Login failed. Check credentials.');
+  if (isLogin) {
+    // --- LOGIN FLOW ---
+    final admin = await AdminService.loginAdmin(username, password);
+    if (admin == null) {
+      setState(() => errorMessage = 'Login failed. Check credentials.');
+    } else {
+      AdminAuthData.token = admin.token;
+      AdminAuthData.adminId = admin.id;
+      AdminAuthData.username = admin.username;
+
+      await AdminAuthData.save();
+
+      print('✅ Admin Token after login: ${AdminAuthData.token}');
+
+      if (AdminAuthData.token.isNotEmpty) {
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
       } else {
+        setState(() => errorMessage = 'Token missing after login.');
+      }
+    }
+  } else {
+    // --- REGISTRATION FLOW ---
+    final result = await AdminService.registerAdmin(username, phone, password);
+    if (result == null) {
+      // Auto-login after successful registration
+      final admin = await AdminService.loginAdmin(username, password);
+      if (admin != null) {
         AdminAuthData.token = admin.token;
         AdminAuthData.adminId = admin.id;
         AdminAuthData.username = admin.username;
-
-        // Save admin auth data persistently
         await AdminAuthData.save();
 
-        print('✅ Admin Token after login: ${AdminAuthData.token}');
-
-        if (AdminAuthData.token.isNotEmpty) {
-          Navigator.pushReplacementNamed(context, '/admin/dashboard');
-        } else {
-          setState(() => errorMessage = 'Token missing after login.');
-        }
-      }
-    } else {
-      final result = await AdminService.registerAdmin(username, phone, password);
-      if (result == null) {
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
+      } else {
+        // fallback if login fails
         setState(() {
           isLogin = true;
-          errorMessage = 'Registration successful. Please login.';
+          errorMessage = 'Registration succeeded, but auto-login failed. Please login manually.';
         });
         usernameController.clear();
         phoneController.clear();
         passwordController.clear();
-      } else {
-        setState(() => errorMessage = result);
       }
+    } else {
+      setState(() => errorMessage = result);
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

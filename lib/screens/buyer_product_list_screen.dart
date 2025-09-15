@@ -915,41 +915,52 @@ class _BuyerProductListScreenState extends State<BuyerProductListScreen> with Si
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredProducts.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: childAspectRatio,
-                      ),
-                      itemBuilder: (context, index) {
-                        final product = _filteredProducts[index];
-                        final isSelected = _selectedProductIds.contains(product.id);
-                        final latestReview = product.reviews.isNotEmpty
-                            ? product.reviews.reduce((a, b) => a.createdAt.isAfter(b.createdAt) ? a : b)
-                            : null;
+                Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  child: _filteredProducts.isNotEmpty
+      ? GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _filteredProducts.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemBuilder: (context, index) {
+            final product = _filteredProducts[index];
+            final isSelected = _selectedProductIds.contains(product.id);
+            final latestReview = product.reviews.isNotEmpty
+                ? product.reviews.reduce((a, b) => a.createdAt.isAfter(b.createdAt) ? a : b)
+                : null;
 
-                        return _SelectableCompactCard(
-                          product: product,
-                          selected: isSelected,
-                          latestReview: latestReview,
-                          onTap: () {
-                            Navigator.pushNamed(context, Routes.productDetail, arguments: product.id);
-                          },
-                          onSelectToggle: () => _toggleSelection(product.id),
-                          onAddToCart: () => _addToCart(product),
-                          currencyFormat: _currencyFormat,
-                          imageAspectRatio: _calculateImageAspectRatio(screenWidth),
-                          maxChips: _calculateMaxChips(screenWidth),
-                        );
-                      },
-                    ),
-                  ),
+            return _SelectableCompactCard(
+              product: product,
+              selected: isSelected,
+              latestReview: latestReview,
+              onTap: () {
+                Navigator.pushNamed(context, Routes.productDetail, arguments: product.id);
+              },
+              onSelectToggle: () => _toggleSelection(product.id),
+              onAddToCart: () => _addToCart(product),
+              currencyFormat: _currencyFormat,
+              imageAspectRatio: _calculateImageAspectRatio(screenWidth),
+              maxChips: _calculateMaxChips(screenWidth),
+            );
+          },
+        )
+      : Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Text(
+              'No products available.',
+              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
+            ),
+          ),
+        ),
+),
+
                 ],
               ),
             );

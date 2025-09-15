@@ -267,23 +267,28 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, Routes.register);
-                          },
-                          child: Text(
-                            "Don't have an account? Register",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: coral,
-                              decoration: TextDecoration.underline,
-                              decorationColor: coral,
-                            ),
-                          ),
-                        ),
-                      ),
+                  MouseRegion(
+  cursor: SystemMouseCursors.click,
+  child: GestureDetector(
+    onTap: () {
+      Navigator.pushNamed(context, Routes.register);
+    },
+    onLongPress: () {
+      Navigator.pushNamed(context, Routes.adminAuth); // <-- Admin login
+    },
+    child: Text(
+      "Don't have an account? Register",
+      style: TextStyle(
+        fontSize: 14,
+        color: coral,
+        decoration: TextDecoration.underline,
+        decorationColor: coral,
+      ),
+    ),
+  ),
+),
+
+
                     ],
                   ),
                 ),
